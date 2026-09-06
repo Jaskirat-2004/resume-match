@@ -1,0 +1,8 @@
+# VIRTUAL ENVIRONMENT
+venv/
+
+# PYTHON CACHE
+__pycache__/
+
+# LOCAL PRIVATE ITEMS
+sample_resume.pdf
