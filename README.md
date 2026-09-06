@@ -1,47 +1,81 @@
 # resume-match
 
-Upload a resume PDF, paste a job description, get a match score and the list of keywords the job asks for that the resume does not have.
+Upload a resume PDF, paste a job description, and get back a match score, the skills you have, and the skills the job asks for that your resume does not mention.
 
-**Live:** https://resume-match-rpu4.onrender.com
+**Live:** https://resume-match.kikilabs.in
 
-Built with FastAPI. No database, no API keys, no LLM calls. Everything runs in memory.
+Built with FastAPI. No database, no API keys, no LLM calls, no model weights. Everything runs in memory on a 512 MB instance.
 
 ---
 
 ## What it does
 
 1. You upload a resume as a PDF and paste a job description as text.
-2. The PDF text is extracted, normalised, and reduced to a keyword set.
-3. The job description goes through the same pipeline.
-4. You get back a percentage and the keywords you are missing.
+2. Both are extracted, unicode-normalised, and tokenised through the identical pipeline.
+3. Each is reduced to the set of **known skills** it mentions, by intersecting with a curated vocabulary.
+4. You get a score, a matched list, and a missing list.
 
-The score answers one question: **what fraction of the job description's keywords appear in the resume.** It is deliberately divided by the job description, not by the resume or by the union of both, because the question being asked is "am I missing what they asked for" and not "how similar are these two documents". Dividing by the resume would penalise a candidate for having skills beyond the role.
+The score answers one question: **what fraction of the skills this job asks for appear in the resume.** It is deliberately divided by the job description, not by the resume or the union of both, because the question is "am I missing what they asked for" and not "how similar are these documents". Dividing by the resume would penalise a candidate for having skills beyond the role.
+
+---
+
+## Why a vocabulary instead of a stopword list
+
+The first version matched every word in the job description against every word in the resume, and removed common English with a growing blacklist. It scored a real Data Analyst posting at **26%**, and 54 of the "missing keywords" were words like `overviewjob`, `bachelor`, `s` and `like`.
+
+The problem is structural. A blacklist has to enumerate everything that is *not* a skill, which is all of English and therefore never finishes.
+
+A vocabulary inverts it. Matching intersects with a curated list of ~460 known skills, so anything that is not a skill is invisible and no blacklist is needed at all. The same posting now scores **~47-54%**, and every word in both output lists is a real skill.
 
 ---
 
 ## How it works
 
 ```
-PDF bytes
-   |
-   |  pdf_to_text()        pdfplumber over an in-memory buffer
-   v
-raw text
-   |
-   |  normalise()          NFKC -> de-hyphenate -> collapse whitespace
-   v
-clean text  <-------------- the job description enters here, same path
-   |
-   |  extract_keywords()   lowercase -> split -> strip punctuation -> drop stopwords
-   v
-keyword set
-   |
-   |  score() / missing_keywords()
-   v
-percentage + missing list
+PDF bytes                          job description text
+   |                                        |
+   |  pdf_to_text()                         |
+   v                                        |
+raw text                                    |
+   |                                        |
+   +--------------------+-------------------+
+                        |
+                        |  normalise()      NFKC -> de-hyphenate -> collapse whitespace
+                        v
+                   clean text
+                        |
+                        |  lowercase
+                        |  SKILL_PHRASES    "power bi" -> "powerbi"   (before splitting)
+                        |  split on [^a-z0-9+#]+
+                        |  & ALL_SKILLS     everything not a known skill dies here
+                        v
+                   skill set
+                        |
+                        |  score()  /  missed_matched_keywords()
+                        v
+            percentage + matched list + missing list
 ```
 
-Both documents go through the identical pipeline. If only one side were lowercased or unicode-normalised, every comparison would be quietly wrong.
+Both documents travel the identical path. If only one side were lowercased or unicode-normalised, every comparison would be quietly wrong.
+
+---
+
+## The skill vocabulary
+
+`config.py` holds the vocabulary, organised so that adding a skill means finding its domain rather than appending to a blob.
+
+| Name | Purpose |
+|---|---|
+| `SKILLS_BY_DOMAIN` | 13 domains: languages, frontend, backend, databases, data engineering, analytics & BI, ML & AI, devops & cloud, mobile, testing, security, tools, business |
+| `ALL_SKILLS` | the flat frozenset that matching intersects against, derived from the domains |
+| `SKILL_PHRASES` | multi-word and punctuated skills, collapsed into one token **before** splitting |
+| `SKILL_ALIASES` | different spellings of one skill, `postgres` to `postgresql` |
+| `DISPLAY_NAMES` | canonical token to human-readable, `powerbi` to `Power BI` |
+| `ROLE_PROFILES` | 15 job roles mapped to the domains they draw on |
+
+**The token rule that governs every entry:** the tokeniser splits on every character that is not `a-z`, `0-9`, `+` or `#`. So each entry in a domain set must be a single token made only of those characters. `c++` and `postgresql` match directly. `power bi` and `node.js` never can, and belong in `SKILL_PHRASES`, which rewrites them into `powerbi` and `nodejs` before the split happens.
+
+`skills_for_role("Data Analyst")` returns every skill the system knows about for that role, which is what a "what does this tool understand?" page is built on.
 
 ---
 
@@ -49,11 +83,11 @@ Both documents go through the identical pipeline. If only one side were lowercas
 
 Things that are not obvious from reading the code.
 
-**The parser takes bytes, not a file path.** `pdf_to_text(data: bytes)` wraps the bytes in `io.BytesIO` and hands that to pdfplumber. Nothing is ever written to disk. This matters because the app is deployed on an instance with an ephemeral filesystem, so anything written to disk disappears on restart anyway.
+**The parser takes bytes, not a file path.** `pdf_to_text(data: bytes)` wraps the bytes in `io.BytesIO` and hands that to pdfplumber. Nothing is written to disk. This matters because the deployment target has an ephemeral filesystem, so anything written to disk disappears on restart anyway.
 
-**Unicode normalisation is the highest value line in the project.** PDF generators store `fl` and `fi` as single ligature codepoints, so `Airflow` in a PDF is often stored with U+FB02, making it 6 characters rather than 7. `"Airflow" in text` then returns `False` and nothing raises. A resume entirely about Airflow scores zero on Airflow, and the only symptom is a number that looks slightly low. `unicodedata.normalize("NFKC", text)` flattens those back to ASCII. NFC and NFD do not, because only the K forms handle compatibility characters.
+**Unicode normalisation is the highest value line in the project.** PDF generators store `fl` and `fi` as single ligature codepoints, so `Airflow` in a PDF is often stored with U+FB02 and is six characters rather than seven. `"Airflow" in text` then returns `False` and nothing raises. A resume entirely about Airflow scores zero on Airflow, and the only symptom is a number that looks slightly low. `unicodedata.normalize("NFKC", text)` flattens those back to ASCII. NFC and NFD do not, because only the K forms handle compatibility characters.
 
-**Punctuation is stripped asymmetrically.** `python,` and `.NET` need opposite treatment: one has trailing punctuation to remove, the other has a leading dot to keep. `+` and `#` are never stripped from either end, which is what keeps `c++` and `c#` intact.
+**Tokenising keeps `+` and `#`.** `c++` and `c#` survive the split because they are in the character class. `.net` and `node.js` degrade to `net` and `node`+`js`, which costs nothing, because the resume side degrades identically and the two still match. Consistency beats fidelity.
 
 **The routes are `def`, not `async def`.** pdfplumber is CPU-bound and blocking, and there is no async version of it. An `async def` route runs directly on the event loop, so a blocking parse inside one would stall every other request on the server. A plain `def` route is run by FastAPI in a threadpool, which keeps the event loop free. This is also why the upload is read with `resume.file.read()` rather than `await resume.read()`.
 
@@ -76,8 +110,8 @@ This tool simulates the keyword search half. The `ResumeParseError` path is the 
 ```
 main.py         FastAPI app and routes
 parser.py       PDF extraction and text normalisation
-analyzer.py     tokenising, keyword extraction, scoring
-config.py       stopword lists
+analyzer.py     tokenising, skill extraction, scoring
+config.py       the skill vocabulary, phrases, aliases, role profiles
 templates/      Jinja2 templates
 ```
 
@@ -113,7 +147,7 @@ Python 3.13. `requirements.txt` is hand-written and lists direct dependencies on
 
 ## Deploying
 
-Runs on Render's free tier as a Web Service.
+Runs on Render's free tier as a Web Service, behind a Cloudflare CNAME.
 
 - Build: `pip install -r requirements.txt`
 - Start: `uvicorn main:my_app --host 0.0.0.0 --port $PORT`
@@ -128,24 +162,27 @@ Free instances sleep after a period of inactivity, so the first request after a 
 
 Being honest about what this does not do yet.
 
-- **Bag of words.** Every keyword weighs the same, so `SQL` stated as a hard requirement counts exactly as much as one item in a list of acceptable degrees. Repetition in a job description is a real signal of emphasis and it is currently thrown away.
-- **No skill vocabulary.** Matching runs over every word in the job description rather than over a known list of skills, so boilerplate prose dominates the score. A 200-word job description might contain 9 actual skills, and the other 191 words are noise in the denominator.
-- **No synonyms.** `postgres`, `postgresql` and `psql` are three unrelated tokens. `ML` and `machine learning` do not match.
-- **Multi-word skills are lost.** Splitting on whitespace destroys `machine learning`, `power bi` and `apache airflow`.
+- **`SKILL_PHRASES` is defined but not yet applied in `extract_keywords`**, so multi-word skills like Power BI are currently invisible.
+- **`score()` has no guard for a job description containing zero recognised skills**, which divides by zero.
+- **`ResumeParseError` is not caught in the route**, so an image-only PDF returns a 500 rather than a readable message.
+- **`SKILL_ALIASES` is not wired in**, so `postgres` and `postgresql` are two unrelated skills, and `reports` and `reporting` are counted separately.
+- **Every skill weighs the same.** A requirement stated once counts as much as one repeated five times. Repetition in a job description is real signal and is currently discarded.
+- **Required versus preferred is not distinguished.** Missing a must-have and missing a nice-to-have score identically.
 - **No semantic matching.** "Built ETL pipelines moving 90 million records" does not match "experience with large-scale data pipeline development", despite meaning the same thing. Keywords cannot see that. Embeddings can.
-- **A job description pasted without spaces between sentences produces junk tokens.** Word boundaries that were never in the source text cannot be recovered.
-- **`ResumeParseError` is not caught in the route yet**, so an image-only PDF currently returns a 500 rather than a readable message.
+- **The vocabulary is hand-curated**, so a skill nobody added is a skill the tool cannot see.
+- **No tests.**
 
 ---
 
 ## Roadmap
 
-1. Catch `ResumeParseError` and render a proper message.
-2. A curated skill vocabulary, so the score reflects skills rather than vocabulary overlap.
-3. `Counter` instead of `set` for the job description, so repetition weighs the score and the missing list sorts by emphasis.
-4. Synonym and alias mapping, which is where a database starts to earn its place.
+1. Apply `SKILL_PHRASES` before tokenising, and guard the zero-skill divide.
+2. Catch `ResumeParseError` and render a proper message.
+3. Wire `SKILL_ALIASES` so spelling variants collapse to one skill.
+4. `Counter` instead of `set` for the job description, so repetition weighs the score and the missing list sorts by emphasis.
 5. Parse-ability checks: is there an extractable email, phone, and set of section headers. This is the half of ATS behaviour that actually rejects people.
-6. Semantic similarity via embeddings.
+6. Store analyses, which makes TF-IDF weighting possible and removes the last hand-curated part.
+7. Semantic similarity via embeddings.
 
 ---
 

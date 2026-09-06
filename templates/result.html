@@ -1,11 +1,36 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>RESUEM MATCH</title>
-</head>
+    <head>
+        <title>RESUME MATCH - RESULTS</title>
+    </head>
 
 <body>
     <h1>RESULTS</h1>
-</body>
 
+    <h2>Match score: {{ score|round(1) }}%</h2>
+
+    <h3>Matching keywords ({{ matching|length }})</h3>
+    {% if matching %}
+    <ul>
+        {% for word in matching %}
+            <li>{{ word }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p>Nothing matchinng. No JD keyword appears in the resume.</p>
+    {% endif %}
+
+    <h3>Missing keywords ({{ missing|length }})</h3>
+    {% if missing %}
+    <ul>
+        {% for word in missing %}
+            <li>{{ word }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p>Nothing missing. Every JD keyword appears in the resume.</p>
+    {% endif %}
+
+    <p><a href="/">Try another</a></p>
+</body>
 </html>
