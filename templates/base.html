@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %} Resume Match {% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <nav class="nav">
+        <a class="brand" href="/">resume<span>match</span></a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="https://github.com/Jaskirat-2004">Github</a>
+            <a href="https://www.linkedin.com/in/jaskirat-link/">Linkedin</a>
+        </div>
+    </nav>
+    <main class="page">
+        {% block content %} {% endblock %}
+    </main>
+
+</body>
+</html>

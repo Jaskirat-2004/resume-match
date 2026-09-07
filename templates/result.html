@@ -1,36 +1,35 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>RESUME MATCH - RESULTS</title>
-    </head>
+{% extends "base.html" %}   
 
-<body>
-    <h1>RESULTS</h1>
+{% block title %} Result {% endblock %}
 
-    <h2>Match score: {{ score|round(1) }}%</h2>
+{% block content %} 
 
-    <h3>Matching keywords ({{ matching|length }})</h3>
-    {% if matching %}
-    <ul>
-        {% for word in matching %}
-            <li>{{ word }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-        <p>Nothing matchinng. No JD keyword appears in the resume.</p>
-    {% endif %}
+<h1>RESULTS</h1>
 
-    <h3>Missing keywords ({{ missing|length }})</h3>
-    {% if missing %}
-    <ul>
-        {% for word in missing %}
-            <li>{{ word }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-        <p>Nothing missing. Every JD keyword appears in the resume.</p>
-    {% endif %}
+<h2>Match score: {{ score|round(1) }}%</h2>
 
-    <p><a href="/">Try another</a></p>
-</body>
-</html>
+<h3>Matching keywords ({{ matching|length }})</h3>
+{% if matching %}
+<ul class="pills">
+    {% for word in matching %}
+        <li class="pill good">{{ word|display }}</li>
+    {% endfor %}
+</ul>
+{% else %}
+    <p>Nothing matchinng. No JD keyword appears in the resume.</p>
+{% endif %}
+
+<h3>Missing keywords ({{ missing|length }})</h3>
+{% if missing %}
+<ul class="pills">
+    {% for word in missing %}
+        <li class="pill bad">{{ word|display }}</li>
+    {% endfor %}
+</ul>
+{% else %}
+    <p>Nothing missing. Every JD keyword appears in the resume.</p>
+{% endif %}
+
+<p><a href="/">Try another</a></p>
+
+{% endblock %}

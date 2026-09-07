@@ -1,0 +1,74 @@
+:root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1b1f24;
+    --muted: #6b7280;
+    --accent: #2f6feb;
+    --line: #e5e7eb;
+    --good-bg: #e7f6ec; --good-ink: #1a7f3c;
+    --bad-bg: #fdecec; --bad-ink: #b3261e;
+}
+
+* { box-sizing: border-box; }
+
+body{
+    margin: 0;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+}
+
+.page {max-width: 720px; margin: 0 auto ; padding: 32px 20px ;}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+}
+
+.brand {font-weight: 700; text-decoration: none; color: var(--ink); }
+.brand span {color: var(--accent);}
+.nav-links a { margin-left: 18px; text-decoration: none; color: var(--muted); font-size: 14px;}
+.nav-links a:hover { color: var(--accent); }
+
+
+h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.5px; }
+.lede { color: var(--muted); margin: 0 0 24px; }
+.card .label { display: block; margin-bottom: 6px; }
+
+textarea, input[type="file"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  margin-bottom: 20px;
+}
+textarea { resize: vertical; }
+
+button {
+  background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+  padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+button:hover { background: #2559c4; }
+
+.pills { display: flex; flex-wrap: wrap; gap: 8px; padding: 0px; margin: 12px 0 0; list-style: none; }
+.pill {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 13px;
+    padding: 5px 10px;
+    border-radius: 999px;
+}
+
+.pill.good { background: var(--good-bg); color: var(--good-ink); }
+.pill.bad  { background: var(--bad-bg);  color: var(--bad-ink); }
+
+.card {background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+.score { font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -2px; }
+.score span {font-size: 24px; color: var(--muted); }
+.label { text-transform: uppercase; letter-spacing: 1px; font-size: 12px; color: var(--muted);}

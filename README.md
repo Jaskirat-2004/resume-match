@@ -47,6 +47,7 @@ raw text                                    |
                         |  lowercase
                         |  SKILL_PHRASES    "power bi" -> "powerbi"   (before splitting)
                         |  split on [^a-z0-9+#]+
+                        |  SKILL_ALIASES    "psql" -> "postgresql"    (after splitting)
                         |  & ALL_SKILLS     everything not a known skill dies here
                         v
                    skill set
@@ -87,7 +88,13 @@ Things that are not obvious from reading the code.
 
 **Unicode normalisation is the highest value line in the project.** PDF generators store `fl` and `fi` as single ligature codepoints, so `Airflow` in a PDF is often stored with U+FB02 and is six characters rather than seven. `"Airflow" in text` then returns `False` and nothing raises. A resume entirely about Airflow scores zero on Airflow, and the only symptom is a number that looks slightly low. `unicodedata.normalize("NFKC", text)` flattens those back to ASCII. NFC and NFD do not, because only the K forms handle compatibility characters.
 
-**Tokenising keeps `+` and `#`.** `c++` and `c#` survive the split because they are in the character class. `.net` and `node.js` degrade to `net` and `node`+`js`, which costs nothing, because the resume side degrades identically and the two still match. Consistency beats fidelity.
+**Tokenising keeps `+` and `#`.** `c++` and `c#` survive the split because they are in the character class. Anything else carrying punctuation, `.net` and `node.js`, would be shredded, which is why `SKILL_PHRASES` rewrites them to `dotnet` and `nodejs` first. The ordering is not cosmetic: a phrase rewritten after the split is a phrase that no longer exists.
+
+**Phrases are replaced longest-first, with `str.replace` and not `re.sub`.** Longest-first because `google cloud` would otherwise fire before `google cloud platform` and leave `gcp platform`. Literal replacement rather than a regex because a third of the phrase table contains regex metacharacters: as a pattern, `.net` matches the `rnet` inside `internet` and rewrites it to `intedotnet`. Plain string replacement interprets nothing, so there is no trap to escape.
+
+**Aliases are applied between the split and the intersect.** `SKILL_ALIASES.get(token, token)` swaps a token if it is a known variant and passes it through untouched otherwise. It must run before the intersect, because the intersect is what discards unknown tokens and `psql` is not itself in the vocabulary. It must also *replace* rather than add: keeping `postgres` alongside `postgresql` inflates the denominator in `score()` and reports a skill as missing that the resume plainly has.
+
+**The frontend is server-rendered and carries no JavaScript.** The form POSTs, Python does the work, a whole new page comes back. `base.html` holds the shell and every page extends it, so the navigation and the stylesheet are declared once. `DISPLAY_NAMES` reaches the templates as a Jinja filter registered on `templates.env`, turning the canonical token `powerbi` back into `Power BI` at the last possible moment. Canonical tokens for logic, display names for humans, and the two never mix.
 
 **The routes are `def`, not `async def`.** pdfplumber is CPU-bound and blocking, and there is no async version of it. An `async def` route runs directly on the event loop, so a blocking parse inside one would stall every other request on the server. A plain `def` route is run by FastAPI in a threadpool, which keeps the event loop free. This is also why the upload is read with `resume.file.read()` rather than `await resume.read()`.
 
@@ -112,7 +119,8 @@ main.py         FastAPI app and routes
 parser.py       PDF extraction and text normalisation
 analyzer.py     tokenising, skill extraction, scoring
 config.py       the skill vocabulary, phrases, aliases, role profiles
-templates/      Jinja2 templates
+templates/      Jinja2 templates: base.html holds the shell, one file per page
+static/         style.css
 ```
 
 | Route | Method | Purpose |
@@ -162,10 +170,9 @@ Free instances sleep after a period of inactivity, so the first request after a 
 
 Being honest about what this does not do yet.
 
-- **`SKILL_PHRASES` is defined but not yet applied in `extract_keywords`**, so multi-word skills like Power BI are currently invisible.
-- **`score()` has no guard for a job description containing zero recognised skills**, which divides by zero.
 - **`ResumeParseError` is not caught in the route**, so an image-only PDF returns a 500 rather than a readable message.
-- **`SKILL_ALIASES` is not wired in**, so `postgres` and `postgresql` are two unrelated skills, and `reports` and `reporting` are counted separately.
+- **No limit on upload size**, so a large PDF is read straight into memory on a 512 MB instance.
+- **The first request after the instance sleeps takes around 50 seconds and the page gives no feedback while it waits**, so it reads as broken rather than slow.
 - **Every skill weighs the same.** A requirement stated once counts as much as one repeated five times. Repetition in a job description is real signal and is currently discarded.
 - **Required versus preferred is not distinguished.** Missing a must-have and missing a nice-to-have score identically.
 - **No semantic matching.** "Built ETL pipelines moving 90 million records" does not match "experience with large-scale data pipeline development", despite meaning the same thing. Keywords cannot see that. Embeddings can.
@@ -176,10 +183,10 @@ Being honest about what this does not do yet.
 
 ## Roadmap
 
-1. Apply `SKILL_PHRASES` before tokenising, and guard the zero-skill divide.
-2. Catch `ResumeParseError` and render a proper message.
-3. Wire `SKILL_ALIASES` so spelling variants collapse to one skill.
-4. `Counter` instead of `set` for the job description, so repetition weighs the score and the missing list sorts by emphasis.
+1. Catch `ResumeParseError` and render a proper message instead of a 500.
+2. `Counter` instead of `set` for the job description, so repetition weighs the score and the missing list sorts by emphasis.
+3. Tests on `normalise()`: de-hyphenation, the ligature, whitespace collapse. These are the failures that return a wrong answer instead of raising, which is exactly what tests are for.
+4. A **vocabulary page**: browse all 461 skills by domain, and filter by role through `skills_for_role()`. The vocabulary is the substance of this tool and it is currently invisible to anyone using it.
 5. Parse-ability checks: is there an extractable email, phone, and set of section headers. This is the half of ATS behaviour that actually rejects people.
 6. Store analyses, which makes TF-IDF weighting possible and removes the last hand-curated part.
 7. Semantic similarity via embeddings.

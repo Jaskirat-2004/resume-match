@@ -1,14 +1,25 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>RESUME MATCH</title>
-    </head>
+{% extends "base.html" %}
 
-    <body>
-        <h1>RESUME MATCH</h1>
-        <div>
-            <a href="/upload"> UPLOADD </a>
-        </div>
+{% block title %}Resume Match{% endblock %}
 
-    </body>
-</html>
+{% block content %}
+
+<h1>Does your resume match the job?</h1>
+
+<p class="lede">Paste a job description, upload your resume as a PDF, and see which
+skills line up and which are missing. Nothing is stored.</p>
+
+<form class="card" action="/result" method="post" enctype="multipart/form-data">
+
+  <label class="label" for="jd">Job description</label>
+  <textarea id="jd" name="jd" rows="12"
+            placeholder="Paste the full job posting here" required></textarea>
+
+  <label class="label" for="resume">Your resume (PDF)</label>
+  <input type="file" id="resume" name="resume" accept="application/pdf" required>
+
+  <button type="submit">CHECK</button>
+
+</form>
+
+{% endblock %}

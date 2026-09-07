@@ -2,13 +2,17 @@
 from fastapi import FastAPI, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 # ================================ FUNCTIONS ================================
+from config import (display)
 from parser import (pdf_to_text, normalise)
 from analyzer import (extract_keywords, score, missed_matched_keywords)
 # ================================ FASTAPI APP ================================
 
 my_app = FastAPI()
 templates = Jinja2Templates(directory = "templates")
+templates.env.filters["display"] = display
+my_app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ================================ HEALTH ROUTE ================================
 
@@ -23,15 +27,6 @@ def root(request:Request):
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-    )
-
-# ================================ UPLOAD ROUTE ================================
-
-@my_app.get("/upload",response_class=HTMLResponse)
-def upload(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="upload.html",
     )
     
 # ================================ RESULT ROUTE ================================
