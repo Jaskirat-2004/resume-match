@@ -72,3 +72,12 @@ button:hover { background: #2559c4; }
 .score { font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -2px; }
 .score span {font-size: 24px; color: var(--muted); }
 .label { text-transform: uppercase; letter-spacing: 1px; font-size: 12px; color: var(--muted);}
+
+.alert {
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 20px;
+  font-size: 14px;
+}

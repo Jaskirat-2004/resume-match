@@ -6,14 +6,13 @@ import pdfplumber
 import io
 import re
 import unicodedata
-# =======================================================================================
-
-class ResumeParseError(Exception):
-    pass
-
+from errors import (ResumeParseError,NotAPdfError)
 # =======================================================================================
 
 def pdf_to_text(data:bytes) -> str:
+
+    if not data.startswith(b"%PDF-"):
+        raise NotAPdfError
 
     parts=[]
     buffer = io.BytesIO(data)
@@ -27,7 +26,7 @@ def pdf_to_text(data:bytes) -> str:
     full_text = "\n".join(parts)
 
     if not full_text:
-        raise ResumeParseError("Resume is Scanned or image cannot scan pdf")
+        raise ResumeParseError()
     
     return full_text
 
@@ -52,6 +51,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     good = Path("sample_resume.pdf").read_bytes()
+
     text = pdf_to_text(good)
     cleaned = normalise(text)
     print(cleaned)

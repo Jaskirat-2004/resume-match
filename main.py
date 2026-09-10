@@ -7,12 +7,24 @@ from fastapi.staticfiles import StaticFiles
 from config import (display)
 from parser import (pdf_to_text, normalise)
 from analyzer import (extract_keywords, score, missed_matched_keywords)
+from errors import (ResumeError,FileTooLargeError)
 # ================================ FASTAPI APP ================================
 
 my_app = FastAPI()
 templates = Jinja2Templates(directory = "templates")
 templates.env.filters["display"] = display
 my_app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ================================ EXCEPTION HANDLER ================================
+
+@my_app.exception_handler(ResumeError)
+def handle_resume_error(request: Request, exc:ResumeError):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"error":exc.message, "jd":getattr(request.state,"jd","")},
+        status_code=400,
+    )
 
 # ================================ HEALTH ROUTE ================================
 
@@ -33,6 +45,11 @@ def root(request:Request):
 
 @my_app.post("/result",response_class=HTMLResponse)
 def result(request:Request, jd:str=Form(...), resume:UploadFile=File(...)):
+
+    request.state.jd = jd
+
+    if (resume.size)/10**6 > 5:
+        raise FileTooLargeError((resume.size)/10**6)
 
     # RESUME
     resume_data = pdf_to_text(resume.file.read())

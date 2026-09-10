@@ -4,6 +4,10 @@
 
 {% block content %}
 
+{% if error %}
+<p class="alert"> {{error}} </p>
+{% endif %}
+
 <h1>Does your resume match the job?</h1>
 
 <p class="lede">Paste a job description, upload your resume as a PDF, and see which
@@ -13,7 +17,7 @@ skills line up and which are missing. Nothing is stored.</p>
 
   <label class="label" for="jd">Job description</label>
   <textarea id="jd" name="jd" rows="12"
-            placeholder="Paste the full job posting here" required></textarea>
+            placeholder="Paste the full job posting here" required>{{jd}}</textarea>
 
   <label class="label" for="resume">Your resume (PDF)</label>
   <input type="file" id="resume" name="resume" accept="application/pdf" required>
