@@ -356,7 +356,6 @@ ROLE_PROFILES = {
     ],
 }
 
-
 # ================================ HELPERS ================================
 
 def skills_for_role(role: str) -> set:

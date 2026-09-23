@@ -51,7 +51,8 @@ textarea, input[type="file"] {
 }
 textarea { resize: vertical; }
 
-button {
+button, .btn {
+  display: inline-block; text-decoration: none;
   background: var(--accent); color: #fff; border: 0; border-radius: 8px;
   padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer;
 }
@@ -59,6 +60,7 @@ button:hover { background: #2559c4; }
 
 .pills { display: flex; flex-wrap: wrap; gap: 8px; padding: 0px; margin: 12px 0 0; list-style: none; }
 .pill {
+  
     font-family: ui-monospace, Consolas, monospace;
     font-size: 13px;
     padding: 5px 10px;

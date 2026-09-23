@@ -8,6 +8,12 @@ from config import (display)
 from parser import (pdf_to_text, normalise)
 from analyzer import (extract_keywords, score, missed_matched_keywords)
 from errors import (ResumeError,FileTooLargeError)
+from handlers import (register_handlers)
+# ================================ LOGGER SETUP ================================
+from logging import (basicConfig, INFO, getLogger) 
+basicConfig(level=INFO, format="[LOG] JS ===== [%(asctime)s] [%(levelname)s] [%(name)s] -> %(message)s ===== JS")
+logger = getLogger(__name__)
+logger.info("APPLICATION STARTED")
 # ================================ FASTAPI APP ================================
 
 my_app = FastAPI()
@@ -17,14 +23,7 @@ my_app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ================================ EXCEPTION HANDLER ================================
 
-@my_app.exception_handler(ResumeError)
-def handle_resume_error(request: Request, exc:ResumeError):
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={"error":exc.message, "jd":getattr(request.state,"jd","")},
-        status_code=400,
-    )
+register_handlers(my_app, templates)
 
 # ================================ HEALTH ROUTE ================================
 
@@ -48,7 +47,7 @@ def result(request:Request, jd:str=Form(...), resume:UploadFile=File(...)):
 
     request.state.jd = jd
 
-    if (resume.size)/10**6 > 5:
+    if resume.size is not None and (resume.size) > 5*10**6:
         raise FileTooLargeError((resume.size)/10**6)
 
     # RESUME
@@ -61,6 +60,8 @@ def result(request:Request, jd:str=Form(...), resume:UploadFile=File(...)):
 
     similarity_score = score(jd_keywords,resume_keywords)
     missed_list, matched_list = missed_matched_keywords(jd_keywords,resume_keywords)
+
+    logger.info("RESUME SCANNED | SCORE {%s}", similarity_score)
 
     return templates.TemplateResponse(
         request = request,

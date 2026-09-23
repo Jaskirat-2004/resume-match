@@ -16,12 +16,15 @@ def pdf_to_text(data:bytes) -> str:
 
     parts=[]
     buffer = io.BytesIO(data)
-    with pdfplumber.open(buffer) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
+    try:
+        with pdfplumber.open(buffer) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
 
-            if page_text:
-                parts.append(page_text)
+                if page_text:
+                    parts.append(page_text)
+    except Exception as exc:
+        raise NotAPdfError from exc
 
     full_text = "\n".join(parts)
 

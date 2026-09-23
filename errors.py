@@ -1,6 +1,6 @@
 class ResumeError(Exception):
-    """Base class. Anything teh user can fix"""
-    message = "SOMETHING WENT WRONG WITH TEH FILE"
+    """Base class. Anything the user can fix"""
+    message = "Something went wrong with the file"
 
 class ResumeParseError(ResumeError):
     message = "This looks like a scanned or image-only PDF.\nUpload the text version, the one Word or Overleaf exported."
